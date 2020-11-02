@@ -1,0 +1,94 @@
+server:
+  port: 8085
+
+spring:
+  # 环境 dev|test|prod
+  profiles:
+    active: dev
+  mvc:
+    static-path-pattern: classpath:/static/js/
+  datasource:
+    thymeleaf:
+      prefix: classpath:/templates/**
+      enabled: true
+      cache: false
+      mode: HTML
+      suffix: .html
+    master:
+      jdbc-url: jdbc:mysql://127.0.0.1:3306/material _cloud_pro?serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8&useSSL=false
+      username: root
+      password: wdkynbd
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        minimum-idle: 5
+        maximum-pool-size: 50
+        connection-test-query: select 1
+        max-lifetime: 1800000
+        connection-timeout: 30000
+        pool-name: HikariCP-1
+
+    slave:
+      jdbc-url: jdbc:mysql://127.0.0.1:3306/dg_material?serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8&useSSL=false
+      username: root
+      password: wdkynbd
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        minimum-idle: 5
+        maximum-pool-size: 50
+        connection-test-query: select 1
+        max-lifetime: 1800000
+        connection-timeout: 30000
+        pool-name: HikariCP-2
+
+
+
+  resources:
+    static-locations: ["/templates/","/static/"]
+
+
+  aop:
+      proxy-target-class: true
+
+  # 配置上传文件大小
+
+  servlet:
+    multipart:
+      enabled: true
+      file-size-threshold: 0
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+  messages:
+    encoding: utf-8
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+
+mybatis:
+  type-aliases-package: com.hgits.hotc.model
+  mapper-locations:
+  - classpath:mapper/*/*.xml
+  configuration:
+    jdbc-type-for-null: null
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+mapper:
+  mappers: com.hgits.hotc.common.mapper.MyMapper
+  not-empty: false
+  identity: MYSQL
+  style: camelhumpandlowercase
+
+pagehelper:
+  helperDialect: mysql
+  reasonable: true
+  supportMethodsArguments: true
+  params: count=countSql
+
+#系统变量
+hotc:
+  tmpDir: D:/fotc/tmpDir/
+
+# hgits:
+#   showsql: true
+

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hgits.hotc.dao.DataPointSumMapper">
+    <insert id="insert">
+        INSERT INTO tb_DataPointSum_Recv (
+            collectId,
+            dataPointType,
+            dataType,
+            dataDate,
+            dataHourBatch,
+            dataSum,
+            netRoadId,
+            sectionId,
+            roadNo,
+            dataPointID,
+            spare1,
+            spare2,
+            spare3,
+            spare4,
+            spare5,
+            spare6
+        ) VALUES (
+            #{collectId},
+            #{dataPointType},
+            #{dataType},
+            #{dataDate},
+            #{dataHourBatch},
+            #{dataSum},
+            #{netRoadId},
+            #{sectionId},
+            #{roadNo},
+            #{dataPointID},
+            #{spare1},
+            #{spare2},
+            #{spare3},
+            #{spare4},
+            #{spare5},
+            #{spare6}
+        );
+    </insert>
+</mapper>

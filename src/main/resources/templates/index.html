@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>合计流水导入平台</title>
+    <link rel="stylesheet" th:href="@{~/static/layui/css/layui.css}" media="all">
+    <script th:src="@{~/static/jquery-2.1.1.js}"></script>
+    <script th:src="@{~/static/layui/layui.js}"></script>
+    <script type="text/javascript" th:src="@{~/static/js/logInfo.js}"></script>
+    <style type="text/css" >
+        .layui-table-main{height: 389px }
+    </style>
+
+
+</head>
+<body class="layui-layout-body">
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header">
+        <div class="layui-logo">合计流水导入平台</div>
+        <!-- 头部区域（可配合layui已有的水平导航） -->
+
+        <ul class="layui-nav layui-layout-right">
+            <li class="layui-nav-item">
+                <a href="javascript:;">
+                    <img src="http://t.cn/RCzsdCq" ;; class="layui-nav-img"/>
+                    管理员
+                </a>
+                <dl class="layui-nav-child">
+                    <dd><a href="">基本资料</a></dd>
+                    <dd><a href="">安全设置</a></dd>
+                </dl>
+            </li>
+        </ul>
+    </div>
+
+    <div class="layui-side layui-bg-black">
+        <div class="layui-side-scroll">
+            <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+            <ul class="layui-nav layui-nav-tree" lay-filter="test">
+                <li class="layui-nav-item layui-nav-itemed">
+                    <a class="" href="javascript:;">合计数</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/api/v1/import/index?sumType=1">工班合计</a></dd>
+                        <dd><a href="/api/v1/import/index?sumType=2">自然日合计</a></dd>
+                    </dl>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+
+    <div class="layui-body">
+        <!--参数导入 文件选择-->
+        <form method="POST" action="/api/v1/import/persist" enctype="multipart/form-data">
+            <input type="file" name="file"/>
+            <input type="submit" value="导入"/>
+        </form>
+        <p style="color: red" th:text="${msg}" th:if="${not #strings.isEmpty(msg)} "></p>
+        <!-- 内容主体区域 -->
+        <table class="layui-hide" id="logInfo" style="margin: auto" ></table>
+    </div>
+
+
+    <div class="layui-footer">
+        <!-- 底部固定区域 -->
+        © layui.com - 底部固定区域
+    </div>
+</div>
+<script>
+    //JavaScript代码区域
+    layui.use('element', function () {
+        var element = layui.element;
+
+    });
+</script>
+</body>
+</html>
