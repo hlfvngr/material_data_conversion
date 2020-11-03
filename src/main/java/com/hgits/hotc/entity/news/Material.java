@@ -29,8 +29,8 @@ public class Material implements Serializable {
     @ApiModelProperty(value = "主键ID")
     private Integer id;
 
-    @ApiModelProperty(value = "物料编码")
-    private String materialNo;
+    /*@ApiModelProperty(value = "物料编码")
+    private String materialNo;*/
 
     @ApiModelProperty(value = "物料名称")
     private String materialName;
@@ -38,7 +38,8 @@ public class Material implements Serializable {
     @ApiModelProperty(value = "申领名称")
     private String alias;
 
-
+    @ApiModelProperty(value = "物料单位")
+    private String materialUnit;
 
 
 }

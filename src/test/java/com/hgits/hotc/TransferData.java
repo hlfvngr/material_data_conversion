@@ -263,6 +263,10 @@ public class TransferData {
     /**
      * 转换物料，直接从storage表中提取了
      */
+    @Test
+    public void materialTransfer() {
+
+    }
 
     /**
      * 转换库存
@@ -305,6 +309,15 @@ public class TransferData {
             sb.deleteCharAt(sb.length() - 1);
         }
 
+        Example example1 = new Example(Material.class);
+        Example.Criteria criteria1 = example1.createCriteria();
+        criteria1.andEqualTo("materialName", oldStorage.getMaterialsName());
+        List<Material> materials = materialService.selectByExample(example1);
+        if (CollectionUtils.isEmpty(materials)) {
+            return null;
+        }
+        Material material = materials.get(0);
+
         Storage storage = new Storage();
         storage.setId(oldStorage.getUuid())
                 .setSerialNo(oldStorage.getNumber())
@@ -314,6 +327,7 @@ public class TransferData {
                 .setWbsNo(oldStorage.getWbsNumber())
                 .setProjectLeaderId(projectLeaderId.intValue())   //
                 .setMaterialNo(oldStorage.getMaterialsNumber())        //
+                .setMaterialId(material.getId())
                 .setBroughtQuantity(oldStorage.getBroughtNumber())
                 .setTotalGoods(oldStorage.getTotalGoods())
                 .setAlarmQuantity(oldStorage.getAlarm())
@@ -550,9 +564,18 @@ public class TransferData {
     }
 
     private RequisitionDetail convertRequisitionDetailOld2New(OldMaterials oldMaterials1) {
-        RequisitionDetail requisitionDetail = new RequisitionDetail();
+        Example example1 = new Example(Material.class);
+        Example.Criteria criteria1 = example1.createCriteria();
+        criteria1.andEqualTo("materialName", oldMaterials1.getMname());
+        List<Material> materials = materialService.selectByExample(example1);
+        if (CollectionUtils.isEmpty(materials)) {
+            return null;
+        }
+        Material material = materials.get(0);
 
+        RequisitionDetail requisitionDetail = new RequisitionDetail();
         requisitionDetail.setId(oldMaterials1.getMid())
+                .setMaterialId(material.getId())
                 .setMaterialName(oldMaterials1.getMname())
                 .setMaterialQuantity(oldMaterials1.getNumber())
                 .setDesignQuantity(oldMaterials1.getDesign())
@@ -600,44 +623,58 @@ public class TransferData {
             Example.Criteria criteria = example.createCriteria();
             criteria.andEqualTo("ccid", oldClaimticketbranch.getCid());
             List<OldMyview> oldMyviews = oldMyviewService.selectByExample(example);
-            if (oldMyviews != null && !oldMyviews.isEmpty()) {
-                oldMyviews.forEach(oldMyview -> {
-                    // 转换成 PicklistRequisitionRelate 对象和 PicklistMaterial
-                    Integer requisitionDetailId = oldMyview.getMid();// 申请单详情单ID
-                    RequisitionDetail requisitionDetail = requisitionDetailService.selectByKey(requisitionDetailId);
-                    Integer relateRequisitionId = requisitionDetail.getRequisitionId();
-                    Requisition requisition = requisitionService.selectByKey(relateRequisitionId);
-                    Long requisitionId = requisition.getId();
-                    String picklistRequisitionStr = "" + oldClaimticketbranch.getCid() + requisitionId;
-                    if (!picklistRequisitionStrSet.contains(picklistRequisitionStr)) {
-                        picklistRequisitionStrSet.add(picklistRequisitionStr);
-                        PicklistRequisitionRelate picklistRequisitionRelate = createPicklistRequisitionRelate(oldClaimticketbranch, oldMyview);
-                        if (picklistRequisitionRelate != null) {
-                            picklistRequisitionRelates.add(picklistRequisitionRelate);
-                        } else {
-                            System.out.println("申请单详情" + oldMyview.getCid() + "转换失败");
-                            return;
-                        }
-                    }
-                    PicklistMaterial picklistMaterial = createPicklistMaterial(oldClaimticketbranch, oldMyview, requisitionId);
-                    if (picklistMaterial != null) {
-                        picklistMaterials.add(picklistMaterial);
-                    }
-                });
+            Map<Integer, List<OldMyview>> map = new HashMap<>();
+
+            if (oldMyviews == null || oldMyviews.isEmpty()) {
+                return;
             }
 
-        });
+            oldMyviews.forEach(m -> {
+                Integer requisitionDetailId = m.getMid();
+                if(map.containsKey(requisitionDetailId)) {
+                    List<OldMyview> list = map.get(requisitionDetailId);
+                    list.add(m);
+                }else {
+                    List<OldMyview> list = new ArrayList<>();
+                    list.add(m);
+                    map.put(requisitionDetailId, list);
+                }
+            });
 
-        // 单独处理picklistMaterialStorageRelates领料详情和库存关系
-        List<OldDeliverysupplies> oldDeliverysupplies = oldDeliverysuppliesService.selectAll();
-        oldDeliverysupplies.forEach(supply -> {
-            PicklistMaterialStorageRelate picklistMaterialStorageRelate = new PicklistMaterialStorageRelate();
-            picklistMaterialStorageRelate.setId(supply.getId())
-                    .setDecrNum(supply.getSum())
-                    .setDecrTime(DateUtils.parseDate(checkDatePattern(supply.getOutmin())))
-                    .setPicklistMaterialId(supply.getMyviweid())
-                    .setStorageId(supply.getUuid());
-            picklistMaterialStorageRelates.add(picklistMaterialStorageRelate);
+            map.forEach((key, value) -> {
+                OldMyview oldMyview = value.get(0);
+                // 转换成 PicklistRequisitionRelate 对象和 PicklistMaterial
+                Integer requisitionDetailId = oldMyview.getMid();// 申请单详情单ID
+                RequisitionDetail requisitionDetail = requisitionDetailService.selectByKey(requisitionDetailId);
+                if (requisitionDetail == null) {
+                    return;
+                }
+                Integer relateRequisitionId = requisitionDetail.getRequisitionId();
+                Requisition requisition = requisitionService.selectByKey(relateRequisitionId);
+                Long requisitionId = requisition.getId();
+                String picklistRequisitionStr = "" + oldClaimticketbranch.getCid() + requisitionId;
+                if (!picklistRequisitionStrSet.contains(picklistRequisitionStr)) {
+                    picklistRequisitionStrSet.add(picklistRequisitionStr);
+                    PicklistRequisitionRelate picklistRequisitionRelate = createPicklistRequisitionRelate(oldClaimticketbranch, oldMyview);
+                    if (picklistRequisitionRelate != null) {
+                        picklistRequisitionRelates.add(picklistRequisitionRelate);
+                    } else {
+                        System.out.println("申请单详情" + oldMyview.getCid() + "转换失败");
+                        return;
+                    }
+                }
+                PicklistMaterial picklistMaterial = createPicklistMaterial(oldClaimticketbranch, value, requisitionId);
+                if (picklistMaterial != null) {
+                    picklistMaterials.add(picklistMaterial);
+                }
+
+                // 不能单独处理picklistMaterialStorageRelates领料详情和库存关系
+                List<PicklistMaterialStorageRelate> picklistMaterialStorageRelates1 = createPicklistMaterialStorageRelate(value);
+                if (picklistMaterialStorageRelates1 != null) {
+                    picklistMaterialStorageRelates.addAll(picklistMaterialStorageRelates1);
+                }
+            });
+
         });
 
         picklistOverviewService.saveAll(picklistOverviews);
@@ -645,6 +682,31 @@ public class TransferData {
         picklistMaterialService.saveAll(picklistMaterials);
         picklistMaterialStorageRelateService.saveAll(picklistMaterialStorageRelates);
         picklistAuditService.saveAll(picklistAudits);
+    }
+
+    private List<PicklistMaterialStorageRelate> createPicklistMaterialStorageRelate(List<OldMyview> value) {
+        List<PicklistMaterialStorageRelate> picklistMaterialStorageRelates = new ArrayList<>();
+        List<OldDeliverysupplies> oldDeliverysupplies = new ArrayList<>();
+        value.forEach(v -> {
+            Example example = new Example(OldDeliverysupplies.class);
+            Example.Criteria criteria = example.createCriteria();
+            criteria.andEqualTo("myviweid", v.getCid());
+            List<OldDeliverysupplies> dsList = oldDeliverysuppliesService.selectByExample(example);
+            if (CollectionUtils.isEmpty(dsList)) return;
+            oldDeliverysupplies.add(dsList.get(0));
+        });
+        if (CollectionUtils.isEmpty(oldDeliverysupplies)) return null;
+        OldDeliverysupplies first = oldDeliverysupplies.get(0);
+        oldDeliverysupplies.forEach(supply -> {
+            PicklistMaterialStorageRelate picklistMaterialStorageRelate = new PicklistMaterialStorageRelate();
+            picklistMaterialStorageRelate.setId(supply.getId())
+                    .setDecrNum(supply.getSum())
+                    .setDecrTime(DateUtils.parseDate(checkDatePattern(supply.getOutmin())))
+                    .setPicklistMaterialId(first.getMyviweid())
+                    .setStorageId(supply.getUuid());
+            picklistMaterialStorageRelates.add(picklistMaterialStorageRelate);
+        });
+        return picklistMaterialStorageRelates;
     }
 
     // 根据旧领料单和旧领料单详情生成最新的领料申请单关联表
@@ -709,14 +771,30 @@ public class TransferData {
         return storageList;
     }
 
-    private PicklistMaterial createPicklistMaterial(OldClaimticketbranch oldClaimticketbranch, OldMyview oldMyview, Long requisitionId) {
+    private PicklistMaterial createPicklistMaterial(OldClaimticketbranch oldClaimticketbranch, List<OldMyview> oldMyviews, Long requisitionId) {
+        OldMyview oldMyview = oldMyviews.get(0);
+
         String materialName = oldMyview.getName();
+        int sum = 0;
+        for (OldMyview m : oldMyviews) {
+            sum += m.getNumber().intValue();
+        }
+
+        Example example1 = new Example(Material.class);
+        Example.Criteria criteria1 = example1.createCriteria();
+        criteria1.andEqualTo("materialName", materialName);
+        List<Material> materials = materialService.selectByExample(example1);
+        if (CollectionUtils.isEmpty(materials)) {
+            return null;
+        }
+        Material material = materials.get(0);
+
         String fivenoeNo = materialService.selectMaterialFivenoeNoByName(materialName);
         PicklistMaterial picklistMaterial = new PicklistMaterial();
         picklistMaterial.setId(oldMyview.getCid())
-                // .setMaterialNo()
+                .setMaterialId(material.getId())
                 .setMaterialName(oldMyview.getName())
-                .setMaterialQuantity(oldMyview.getNumber().intValue())
+                .setMaterialQuantity(sum)
                 .setMaterialUnit(oldMyview.getAssemblyitem())
                 .setMaterialFivenoeNo(fivenoeNo)
                 .setPicklistId(oldClaimticketbranch.getPickingnumber())
@@ -896,7 +974,7 @@ public class TransferData {
             Example.Criteria criteria = example.createCriteria();
             criteria.andEqualTo("billNo", fa.getBillno());
             List<OldBorrowCountdown> oldBorrowCountdowns = oldBorrowCountdownService.selectByExample(example);
-            if (oldBorrowCountdowns != null && oldBorrowCountdowns.size() != 1) {
+            if (oldBorrowCountdowns != null && oldBorrowCountdowns.size() > 1) {
                 return;
             }
 
@@ -904,12 +982,28 @@ public class TransferData {
             BorrowOverview borrowOverview = createBorrowOverview(oldBorrowCountdown, fa);
             if (borrowOverview != null) {
                 borrowOverviews.add(borrowOverview);
+            }else {
+                return;
             }
 
             Example example1 = new Example(OldBorrowMaterial.class);
             Example.Criteria criteria1 = example1.createCriteria();
             criteria1.andEqualTo("billno", fa.getBillno());
             List<OldBorrowMaterial> oldBorrowMaterials = oldBorrowMaterialService.selectByExample(example1);
+
+            Map<Integer, List<OldBorrowMaterial>> map = new HashMap<>();
+
+            oldBorrowMaterials.forEach(bm -> {
+                Integer materialDetailId = bm.getMid();
+                if (map.containsKey(materialDetailId)) {
+                    List<OldBorrowMaterial> list = map.get(materialDetailId);
+                    list.add(bm);
+                }else {
+                    List<OldBorrowMaterial> list = new ArrayList<>();
+                    list.add(bm);
+                    map.put(materialDetailId, list);
+                }
+            });
 
             // 此Set用来记录哪个借料单下的项目已经生成了相应的记录，用来去重
             Set<String> borrowRequisitionStrSet = new HashSet<>();
@@ -921,8 +1015,8 @@ public class TransferData {
             StringBuilder clientMans = new StringBuilder();
             StringBuilder supervisorMans = new StringBuilder();
 
-            oldBorrowMaterials.forEach(bm -> {
-
+            map.forEach((key, value) -> {
+                OldBorrowMaterial bm = value.get(0);
                 status[0] = convertStatus(bm.getJlIsAgree(), bm.getKjIsAgree(), bm.getState());
                 String supervisorTime = DateUtils.format(bm.getJlAuditingTime());
                 supervisorTimes.append(supervisorTime);
@@ -958,18 +1052,15 @@ public class TransferData {
                 }
 
                 // 生成借料详情记录
-                BorrowMaterial borrowMaterial = createBorrowMaterial(bm, fa.getBillno(), rid);
+                BorrowMaterial borrowMaterial = createBorrowMaterial(value, fa.getBillno(), rid);
                 if (borrowMaterial != null) {
                     borrowMaterials.add(borrowMaterial);
                 }
 
                 // 生成借料详情与库存之间的关系
-                if (oldBorrowCountdown != null) {
-                    BorrowMaterialStorageRelate borrowMaterialStorageRelate = createBorrowMaterialStorageRelate(bm, oldBorrowCountdown);
-                    if (borrowMaterialStorageRelate != null) {
-                        borrowMaterialStorageRelates.add(borrowMaterialStorageRelate);
-                    }
-                }
+                List<BorrowMaterialStorageRelate> borrowMaterialStorageRelate = createBorrowMaterialStorageRelate(value, oldBorrowCountdown);
+                borrowMaterialStorageRelates.addAll(borrowMaterialStorageRelate);
+
             });
 
             BorrowAudit borrowAudit = new BorrowAudit();
@@ -1023,57 +1114,55 @@ public class TransferData {
         }
     }
 
-    private BorrowMaterialStorageRelate createBorrowMaterialStorageRelate(OldBorrowMaterial bm, OldBorrowCountdown oldBorrowCountdown) {
-        BorrowMaterialStorageRelate borrowMaterialStorageRelate = new BorrowMaterialStorageRelate();
-        borrowMaterialStorageRelate
-                // .setId()
-                .setDecrNum(bm.getBorrowQuantity())
-                .setDecrTime(oldBorrowCountdown.getUpdateResultTime())
-                .setBorrowMaterialId(bm.getId())
-                .setStorageId(bm.getUuid());
-        return borrowMaterialStorageRelate;
+    private List<BorrowMaterialStorageRelate> createBorrowMaterialStorageRelate(List<OldBorrowMaterial> bms, OldBorrowCountdown oldBorrowCountdown) {
+        List<BorrowMaterialStorageRelate> list = new ArrayList<>();
+        Integer id = bms.get(0).getId();
+        bms.forEach(bm -> {
+            BorrowMaterialStorageRelate borrowMaterialStorageRelate = new BorrowMaterialStorageRelate();
+            borrowMaterialStorageRelate
+                    // .setId()
+                    .setDecrNum(bm.getBorrowQuantity())
+                    .setDecrTime(oldBorrowCountdown == null ? null : oldBorrowCountdown.getUpdateResultTime())
+                    .setBorrowMaterialId(id)
+                    .setStorageId(bm.getUuid());
+            list.add(borrowMaterialStorageRelate);
+        });
+
+        return list;
     }
 
-    private BorrowMaterial createBorrowMaterial(OldBorrowMaterial bm, String borrowId, Integer requisitionId) {
+    private BorrowMaterial createBorrowMaterial(List<OldBorrowMaterial> bms, String borrowId, Integer requisitionId) {
         BorrowMaterial borrowMaterial = new BorrowMaterial();
-        // 根据物料编码去查询物料名称
-        List<String> materialNames = materialService.selectMaterialNameByMaterialNo(bm.getMaterialsNumber());
-        String materialUnit = null;
-        String fiveoneNo = null;
-        for (int i = 0; i < materialNames.size(); i++) {
-            String materialName = materialNames.get(i);
-            materialUnit = materialService.selectMaterialUnitByName(materialName);
-            if (materialUnit != null && !"".equals(materialUnit)) {
-                break;
-            }
-        }
-
-        for (int i = 0; i < materialNames.size(); i++) {
-            String materialName = materialNames.get(i);
-            fiveoneNo = materialService.selectMaterialFivenoeNoByName(materialName);
-            if (fiveoneNo != null && !"".equals(fiveoneNo)) {
-                break;
-            }
-        }
-
+        OldBorrowMaterial bm = bms.get(0);
         String materialsName = bm.getMaterialsName();
-        // int[] quantifier = findQuantifier(materialsName);
-        if (materialUnit == null || "".equals(materialUnit)) {
-            materialUnit = materialService.selectMaterialUnitByName(materialsName);
-        }
+        Example example = new Example(Material.class);
+        Example.Criteria criteria = example.createCriteria();
+        criteria.orEqualTo("materialName", materialsName);
+        criteria.orEqualTo("alias", materialsName);
+        List<Material> materials = materialService.selectByExample(example);
 
+        if(materials == null) {
+            return null;
+        }
+        Material material = materials.get(0);
+
+        String fiveoneNo = null;
+
+        fiveoneNo = materialService.selectMaterialFivenoeNoByName(materialsName);
         if (fiveoneNo == null || "".equals(fiveoneNo)) {
-            fiveoneNo = materialService.selectMaterialFivenoeNoByName(materialsName);
-            if(fiveoneNo == null) fiveoneNo = "";
+            fiveoneNo = "";
+        }
+        int sum = 0;
+        for (OldBorrowMaterial b : bms) {
+            sum += b.getBorrowQuantity();
         }
 
-        System.out.println("材料名称：" + bm.getMaterialsName() + " 单位：" + materialUnit);
         borrowMaterial
                 .setId(bm.getId())
-                .setMaterialNo(bm.getMaterialsNumber())
+                .setMaterialId(material.getId())
                 .setMaterialName(bm.getMaterialsName())
-                .setMaterialQuantity(bm.getBorrowQuantity())
-                .setMaterialUnit(materialUnit)
+                .setMaterialQuantity(sum)
+                .setMaterialUnit(material.getMaterialUnit())
                 .setBorrowId(borrowId)
                 .setRequisitionId(requisitionId)
                 .setRequisitionDetailId(bm.getMid())

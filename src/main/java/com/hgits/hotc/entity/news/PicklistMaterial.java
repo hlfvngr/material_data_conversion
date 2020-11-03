@@ -31,8 +31,8 @@ public class PicklistMaterial implements Serializable {
     @Id
     private Integer id;
 
-    @ApiModelProperty(value = "申请物料编号")
-    private String materialNo;
+    @ApiModelProperty(value = "申请物料ID")
+    private Integer materialId;
 
     @ApiModelProperty(value = "申请物料名称")
     private String materialName;

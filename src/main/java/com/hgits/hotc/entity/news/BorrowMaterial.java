@@ -31,8 +31,8 @@ public class BorrowMaterial implements Serializable {
     @Id
     private Integer id;
 
-    @ApiModelProperty(value = "物料编号")
-    private String materialNo;
+    @ApiModelProperty(value = "物料ID")
+    private Integer materialId;
 
     @ApiModelProperty(value = "物料名称")
     private String materialName;

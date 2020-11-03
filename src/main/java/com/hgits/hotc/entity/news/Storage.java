@@ -51,6 +51,9 @@ public class Storage implements Serializable {
     @ApiModelProperty(value = "物料编码")
     private String materialNo;
 
+    @ApiModelProperty(value = "物料ID")
+    private Integer materialId;
+
     @ApiModelProperty(value = "已领数量")
     private Integer broughtQuantity;
 
