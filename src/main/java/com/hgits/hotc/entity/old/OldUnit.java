@@ -40,9 +40,9 @@ public class OldUnit implements Serializable {
     @Column(name = "CONCRETEUNIT")
     private String concreteunit;
 
-    @ApiModelProperty(value = "具体公司名成")
+    /*@ApiModelProperty(value = "具体公司名成")
     @Column(name = "COMPANYNAME")
-    private String companyname;
+    private String companyname;*/
 
     @ApiModelProperty(value = "是否施工队")
     @Column(name = "ISRANK")

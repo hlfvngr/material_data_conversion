@@ -119,6 +119,135 @@ public class TransferData {
     private static final LocalDateTime GreenTime = LocalDateTime.parse("1970-01-01 00:00:00",DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
     /**
+     * 转换机构，由于单表操作，直接在数据库执行
+     */
+    @Test
+    public void sysDeptTransfer() {
+        List<OldUnit> oldUnits = oldUnitService.selectAll();
+        Map<String, Set<String>> unit2ConcreteMap = new LinkedHashMap<>();
+        Map<String, Set<String>> concrete2RankMap = new LinkedHashMap<>();
+
+        oldUnits.forEach(unit -> {
+            String unitname = unit.getUnitname();
+            String concreteUnit = unit.getConcreteunit();
+            if (!unit2ConcreteMap.containsKey(unitname)) {
+                Set<String> set = new LinkedHashSet<>();
+                set.add(concreteUnit);
+                unit2ConcreteMap.put(unitname, set);
+            } else {
+                Set<String> set = unit2ConcreteMap.get(unitname);
+                set.add(concreteUnit);
+            }
+
+            if ("0".equals(unit.getIsrank())) {
+                String rank = unit.getRank();
+                if (!concrete2RankMap.containsKey(concreteUnit)) {
+                    Set<String> set = new LinkedHashSet<>();
+                    set.add(rank);
+                    concrete2RankMap.put(concreteUnit, set);
+                } else {
+                    Set<String> set = concrete2RankMap.get(concreteUnit);
+                    set.add(rank);
+                }
+            }
+        });
+
+        Map<String, String> idMap = new HashMap<>();
+
+        List<SysDept> depts = new ArrayList<>();
+
+        int i = 0;
+        int id = 1;
+        for (String unit : unit2ConcreteMap.keySet()) {
+            SysDept sysDept = createFirstLevelNode(unit, id, i);
+            depts.add(sysDept);
+            idMap.put(unit, String.valueOf(id));
+            id++;
+            i++;
+        }
+        i = 0;
+
+        for (Map.Entry<String, Set<String>> pair : unit2ConcreteMap.entrySet()) {
+            String parentIds = idMap.get(pair.getKey());
+            for (String s : pair.getValue()) {
+                SysDept sysDepts = createSecondLevelNode(s, parentIds, id, i);
+                depts.add(sysDepts);
+                idMap.put(s, id + "," + parentIds);
+                id++;
+                i++;
+            }
+            i = 0;
+        }
+
+        for (Map.Entry<String, Set<String>> pair : concrete2RankMap.entrySet()) {
+            String parentIds = idMap.get(pair.getKey());
+            if( parentIds == null || !parentIds.contains(",")) return;
+            String parentId = parentIds.substring(0, parentIds.indexOf(","));
+            for (String s : pair.getValue()) {
+                SysDept sysDepts = createThirdLevelNode(s, parentId, parentIds, id, i);
+                depts.add(sysDepts);
+                // idMap.put(s, id + "," + parentIds);
+                id++;
+                i++;
+            }
+            i = 0;
+        }
+
+        sysDeptService.saveAll(depts);
+    }
+
+    private SysDept createThirdLevelNode(String s, String parentId, String parentIds, Integer id, int index) {
+        SysDept sysDept = new SysDept();
+        sysDept.setId(id.longValue())
+                .setName(s)
+                .setFullName(null)
+                .setParentId(Long.valueOf(parentId))
+                .setParentIds(parentIds)
+                .setLevel(4)
+                .setOrderNum(index)
+                .setCreateBy("admin")
+                .setCreateTime(LocalDateTime.now())
+                .setLastUpdateBy("admin")
+                .setLastUpdateTime(LocalDateTime.now())
+                .setDelFlag(0);
+        return sysDept;
+    }
+
+    private SysDept createSecondLevelNode(String s, String parentIds, Integer id, int index) {
+        SysDept sysDept = new SysDept();
+        sysDept.setId(id.longValue())
+                .setName(s)
+                .setFullName(null)
+                .setParentId(Long.valueOf(parentIds))
+                .setParentIds(parentIds)
+                .setLevel(2)
+                .setOrderNum(index)
+                .setCreateBy("admin")
+                .setCreateTime(LocalDateTime.now())
+                .setLastUpdateBy("admin")
+                .setLastUpdateTime(LocalDateTime.now())
+                .setDelFlag(0);
+        return sysDept;
+    }
+
+    private SysDept createFirstLevelNode(String k, Integer id, int index) {
+        SysDept sysDept = new SysDept();
+        sysDept.setId(id.longValue())
+                .setName(k)
+                .setFullName(null)
+                .setParentId(null)
+                .setParentIds(null)
+                .setLevel(1)
+                .setOrderNum(index)
+                .setCreateBy("admin")
+                .setCreateTime(LocalDateTime.now())
+                .setLastUpdateBy("admin")
+                .setLastUpdateTime(LocalDateTime.now())
+                .setDelFlag(0);
+        return sysDept;
+    }
+
+    /**
      * 转换用户
      */
     @Test

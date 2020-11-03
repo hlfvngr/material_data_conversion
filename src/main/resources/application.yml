@@ -15,7 +15,7 @@ spring:
       mode: HTML
       suffix: .html
     master:
-      jdbc-url: jdbc:mysql://127.0.0.1:3306/material _cloud_pro?serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8&useSSL=false
+      jdbc-url: jdbc:mysql://127.0.0.1:3306/material_dev?serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8&useSSL=false
       username: root
       password: wdkynbd
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -28,7 +28,7 @@ spring:
         pool-name: HikariCP-1
 
     slave:
-      jdbc-url: jdbc:mysql://127.0.0.1:3306/dg_material?serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8&useSSL=false
+      jdbc-url: jdbc:mysql://127.0.0.1:3306/dg_material_system?serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8&useSSL=false
       username: root
       password: wdkynbd
       driver-class-name: com.mysql.cj.jdbc.Driver
