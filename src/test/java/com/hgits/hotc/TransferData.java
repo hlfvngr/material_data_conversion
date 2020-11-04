@@ -11,6 +11,8 @@ import com.hgits.hotc.utils.DateUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.CollectionUtils;
@@ -26,6 +28,8 @@ import static org.apache.commons.lang3.ClassUtils.getName;
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class TransferData {
+
+    private static final Logger logger = LoggerFactory.getLogger(TransferData.class);
 
     /********************************** start 新服务 start *****************************/
     @Resource
@@ -265,13 +269,17 @@ public class TransferData {
 
     private SysUser convertUserFromOld2New(OldUser oldUser) {
         SysUser sysUser = new SysUser();
-        if (oldUser.getUnitid() == null)  {
-            return null;
+        Long deptId = null;
+        if (!"admin".equalsIgnoreCase(oldUser.getLoginid()))  {
+            if (oldUser.getUnitid() == null) {
+                return null;
+            }
+            deptId = getDeptId(oldUser.getUnitid());
+            if(deptId == null) {
+                return null;
+            }
         }
-        Long deptId = getDeptId(oldUser.getUnitid());
-        if(deptId == null) {
-            return null;
-        }
+
         sysUser.setId(oldUser.getUid().longValue())
                 .setName(oldUser.getLoginid())
                 .setNickName(oldUser.getUsername())
@@ -303,9 +311,10 @@ public class TransferData {
             String rank = oldUnits.getRank();
             String concreteunit = oldUnits.getConcreteunit();
             if (rank != null
-                    && !"夏天队".equals(rank)
+                    // && !"夏天队".equals(rank)
                     && !"".equals(rank)
-                    && rank.endsWith("队")) {
+                    // && rank.endsWith("队")
+            ) {
                 Example example = new Example(SysDept.class);
                 Example.Criteria criteria = example.createCriteria();
                 criteria.andEqualTo("name", rank);
@@ -394,7 +403,11 @@ public class TransferData {
      */
     @Test
     public void materialTransfer() {
-
+        /*
+        select distinct materials_name, applymaterialsname, u.materialsUnit from `storage` s
+        left join sys_51_materials_unit u on s.materials_name = u.materialsName or s.applymaterialsname = u.materialsName
+        GROUP BY materials_name
+        */
     }
 
     /**
@@ -411,7 +424,7 @@ public class TransferData {
                 storageList.add(storage);
             }
         });
-        System.out.println("转换后数据条数：" + storageList.size());
+        logger.info("转换后数据条数：" + storageList.size());
         storageService.saveAll(storageList);
     }
 
@@ -421,7 +434,7 @@ public class TransferData {
         criteria.andEqualTo("nickName", oldStorage.getProjectLeader());
         List<SysUser> sysUsers = sysUserService.selectByExample(example);
         if (sysUsers == null || sysUsers.isEmpty()) {
-            System.out.println(oldStorage.getProjectLeader() + "项目负责人未在系统中注册信息，转换失败！");
+            logger.info(oldStorage.getProjectLeader() + "项目负责人未在系统中注册信息，转换失败！");
             return null;
         }
         Long projectLeaderId = sysUsers.get(0).getId();
@@ -483,8 +496,8 @@ public class TransferData {
                 requisitionList.add(requisition);
             }
         });
-        System.out.println("旧系统库存系统数据条数：" + oldBuildingmaterials.size());
-        System.out.println("转换后数据条数：" + requisitionList.size());
+        logger.info("旧系统库存系统数据条数：" + oldBuildingmaterials.size());
+        logger.info("转换后数据条数：" + requisitionList.size());
         List<OldBlackbuildingmaterials> oldBlackbuildingmaterials = oldBlackbuildingmaterialsService.selectAll();
         oldBlackbuildingmaterials.forEach(oldBlackBuilding -> {
             Requisition requisition = convertRequisitionOld2New(oldBlackBuilding, 1);
@@ -492,8 +505,8 @@ public class TransferData {
                 requisitionList.add(requisition);
             }
         });
-        System.out.println("旧系统库存系统数据条数：" + oldBlackbuildingmaterials.size());
-        System.out.println("转换后数据条数：" + requisitionList.size());
+        logger.info("旧系统库存系统数据条数：" + oldBlackbuildingmaterials.size());
+        logger.info("转换后数据条数：" + requisitionList.size());
         requisitionService.saveAll(requisitionList);
     }
 
@@ -621,7 +634,7 @@ public class TransferData {
             if (sysUsers != null && !sysUsers.isEmpty()) {
                 return sysUsers.get(0).getId().intValue();
             } {
-                System.out.println("用户：" + submitname + "没有找到相应的Id，返回null");
+                logger.info("用户：" + submitname + "没有找到相应的Id，返回null");
             }
         }
         return null;
@@ -636,7 +649,7 @@ public class TransferData {
             if (towns != null && !towns.isEmpty()) {
                 return towns.get(0).getId();
             } {
-                System.out.println("镇分：" + town + "没有找到相应的Id，返回null");
+                logger.info("镇分：" + town + "没有找到相应的Id，返回null");
             }
         }
         return null;
@@ -651,7 +664,7 @@ public class TransferData {
             if (sysDicts != null && !sysDicts.isEmpty()) {
                 return sysDicts.get(0).getId().intValue();
             } {
-                System.out.println("名称：" + label + "没有找到相应的Id，返回null");
+                logger.info("名称：" + label + "没有找到相应的Id，返回null");
             }
         }
         return null;
@@ -670,7 +683,7 @@ public class TransferData {
             if (sysDepts != null && !sysDepts.isEmpty()) {
                 return sysDepts.get(0).getId().intValue();
             } {
-                System.out.println("施工队：" + constructionteam + "没有找到相应的Id，返回null");
+                logger.info("施工队：" + constructionteam + "没有找到相应的Id，返回null");
             }
         }
         return null;
@@ -695,7 +708,8 @@ public class TransferData {
     private RequisitionDetail convertRequisitionDetailOld2New(OldMaterials oldMaterials1) {
         Example example1 = new Example(Material.class);
         Example.Criteria criteria1 = example1.createCriteria();
-        criteria1.andEqualTo("materialName", oldMaterials1.getMname());
+        criteria1.orEqualTo("materialName", oldMaterials1.getMname());
+        criteria1.orEqualTo("alias", oldMaterials1.getMname());
         List<Material> materials = materialService.selectByExample(example1);
         if (CollectionUtils.isEmpty(materials)) {
             return null;
@@ -788,7 +802,7 @@ public class TransferData {
                     if (picklistRequisitionRelate != null) {
                         picklistRequisitionRelates.add(picklistRequisitionRelate);
                     } else {
-                        System.out.println("申请单详情" + oldMyview.getCid() + "转换失败");
+                        logger.info("申请单详情" + oldMyview.getCid() + "转换失败");
                         return;
                     }
                 }
@@ -1071,7 +1085,7 @@ public class TransferData {
             if (sysDepts != null && !sysDepts.isEmpty()) {
                 return sysDepts.get(0);
             } {
-                System.out.println("施工队：" + team + "没有找到相应的Id，返回null");
+                logger.info("施工队：" + team + "没有找到相应的Id，返回null");
             }
         }
         return null;
@@ -1098,6 +1112,26 @@ public class TransferData {
         List<BorrowMaterialStorageRelate> borrowMaterialStorageRelates = new ArrayList<>();
 
         oldBorrowMaterialFas.forEach(fa -> {
+            Example example1 = new Example(OldBorrowMaterial.class);
+            Example.Criteria criteria1 = example1.createCriteria();
+            criteria1.andEqualTo("billno", fa.getBillno());
+            List<OldBorrowMaterial> oldBorrowMaterials = oldBorrowMaterialService.selectByExample(example1);
+           if (CollectionUtils.isEmpty(oldBorrowMaterials)) {
+               return;
+           }
+            Map<Integer, List<OldBorrowMaterial>> map = new HashMap<>();
+
+            oldBorrowMaterials.forEach(bm -> {
+                Integer materialDetailId = bm.getMid();
+                if (map.containsKey(materialDetailId)) {
+                    List<OldBorrowMaterial> list = map.get(materialDetailId);
+                    list.add(bm);
+                }else {
+                    List<OldBorrowMaterial> list = new ArrayList<>();
+                    list.add(bm);
+                    map.put(materialDetailId, list);
+                }
+            });
 
             Example example = new Example(OldBorrowCountdown.class);
             Example.Criteria criteria = example.createCriteria();
@@ -1115,25 +1149,6 @@ public class TransferData {
                 return;
             }
 
-            Example example1 = new Example(OldBorrowMaterial.class);
-            Example.Criteria criteria1 = example1.createCriteria();
-            criteria1.andEqualTo("billno", fa.getBillno());
-            List<OldBorrowMaterial> oldBorrowMaterials = oldBorrowMaterialService.selectByExample(example1);
-
-            Map<Integer, List<OldBorrowMaterial>> map = new HashMap<>();
-
-            oldBorrowMaterials.forEach(bm -> {
-                Integer materialDetailId = bm.getMid();
-                if (map.containsKey(materialDetailId)) {
-                    List<OldBorrowMaterial> list = map.get(materialDetailId);
-                    list.add(bm);
-                }else {
-                    List<OldBorrowMaterial> list = new ArrayList<>();
-                    list.add(bm);
-                    map.put(materialDetailId, list);
-                }
-            });
-
             // 此Set用来记录哪个借料单下的项目已经生成了相应的记录，用来去重
             Set<String> borrowRequisitionStrSet = new HashSet<>();
             Integer[] status = new Integer[1];
@@ -1143,7 +1158,8 @@ public class TransferData {
             JSONArray clientSuggests = new JSONArray();
             StringBuilder clientMans = new StringBuilder();
             StringBuilder supervisorMans = new StringBuilder();
-
+            Boolean[] flag = new Boolean[1];
+            flag[0] = false;
             map.forEach((key, value) -> {
                 OldBorrowMaterial bm = value.get(0);
                 status[0] = convertStatus(bm.getJlIsAgree(), bm.getKjIsAgree(), bm.getState());
@@ -1169,8 +1185,18 @@ public class TransferData {
 
 
                 OldMaterials oldMaterials = oldMaterialsService.selectByKey(bm.getMid());
+                if (oldMaterials == null) {
+                    flag[0] = true;
+                    logger.info(bm.getMid() + "未查找到对应的申请详情单！");
+                    return;
+                }
                 Integer rid = oldMaterials.getRid();
                 OldBuildingmaterials oldBuildingmaterials = oldBuildingmaterialsService.selectByKey(rid);
+                if (oldBuildingmaterials == null) {
+                    flag[0] = true;
+                    logger.info(oldMaterials.getRid() + "未查找到对应的申请单！");
+                    return;
+                }
                 String borrowRequisitionStr = "" + fa.getBillno() + oldBuildingmaterials.getRequisition();
                 if(!borrowRequisitionStrSet.contains(borrowRequisitionStr)){
                     BorrowRequisitionRelate borrowRequisitionRelate = creatBorrowRequisitionRelate(bm, oldBuildingmaterials, fa.getBillno());
@@ -1191,24 +1217,25 @@ public class TransferData {
                 borrowMaterialStorageRelates.addAll(borrowMaterialStorageRelate);
 
             });
-
-            BorrowAudit borrowAudit = new BorrowAudit();
-            borrowAudit
-                    // .setId()
-                    .setState(status[0])  // 需根据所有项目的状态来设置
-                    .setSubmitTime(fa.getCreateTime())
-                    .setEndTime(oldBorrowCountdown == null ? null : oldBorrowCountdown.getEndDate())
-                    .setSupervisorTime(supervisorTimes.deleteCharAt(supervisorTimes.length() - 1).toString())
-                    .setSupervisorSuggest(supervisorSuggests.toJSONString())
-                    .setClientTime(clientTimes.deleteCharAt(clientTimes.length() - 1).toString())
-                    .setClientSuggest(clientSuggests.toJSONString())
-                    .setClientMan(clientMans.deleteCharAt(clientMans.length() - 1).toString())
-                    .setSupervisorMan(supervisorMans.deleteCharAt(supervisorMans.length() - 1).toString())
-                    // .setPurchaseMan()
-                    // .setPurchaseSuggest()
-                    // .setPurchaseTime()
-                    .setBorrowId(fa.getBillno());
-            borrowAudits.add(borrowAudit);
+            if (!flag[0]) {
+                BorrowAudit borrowAudit = new BorrowAudit();
+                borrowAudit
+                        // .setId()
+                        .setState(status[0])  // 需根据所有项目的状态来设置
+                        .setSubmitTime(fa.getCreateTime())
+                        .setEndTime(oldBorrowCountdown == null ? null : oldBorrowCountdown.getEndDate())
+                        .setSupervisorTime(supervisorTimes.length() == 0 ? null : supervisorTimes.deleteCharAt(supervisorTimes.length() - 1).toString())
+                        .setSupervisorSuggest(supervisorSuggests.toJSONString())
+                        .setClientTime(clientTimes.length() == 0 ? null : clientTimes.deleteCharAt(clientTimes.length() - 1).toString())
+                        .setClientSuggest(clientSuggests.toJSONString())
+                        .setClientMan(clientMans.length() == 0 ? null : clientMans.deleteCharAt(clientMans.length() - 1).toString())
+                        .setSupervisorMan(supervisorMans.length() == 0 ? null : supervisorMans.deleteCharAt(supervisorMans.length() - 1).toString())
+                        // .setPurchaseMan()
+                        // .setPurchaseSuggest()
+                        // .setPurchaseTime()
+                        .setBorrowId(fa.getBillno());
+                borrowAudits.add(borrowAudit);
+            }
         });
 
         borrowOverviewService.saveAll(borrowOverviews);
@@ -1270,7 +1297,7 @@ public class TransferData {
         criteria.orEqualTo("alias", materialsName);
         List<Material> materials = materialService.selectByExample(example);
 
-        if(materials == null) {
+        if(materials == null || materials.size() == 0) {
             return null;
         }
         Material material = materials.get(0);
